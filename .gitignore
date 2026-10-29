@@ -11,6 +11,7 @@ runs/
 dataset/images/
 dataset/labels/*.cache
 Dataset_Full/
+captured/
 
 # Setup leftovers
 audio_model.bak/

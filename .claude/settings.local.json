@@ -9,7 +9,10 @@
       "PowerShell(Get-Content \"$env:TEMP\\\\claude\\\\setup_run3.log\" -Tail 2)",
       "PowerShell(Get-Content \"$env:TEMP\\\\claude\\\\setup_run3.log\" | Select-String -Pattern \"==>|\\\\[OK\\\\]|\\\\[FAIL\\\\]|\\\\[WARN\\\\]|Python \\\\d|checks|Setup|Vosk|audio_model|EXIT\" | Select-Object -Last 40)",
       "PowerShell(cd \"C:\\\\Nikhil\\\\Programs\\\\StudyBuddyAvatar-master\\\\StudyBuddyAvatar-master\"; Get-ChildItem audio_model.bak -Recurse -File | Measure-Object Length -Sum | Select-Object Count, Sum; Remove-Item audio_model.bak -Recurse -Force -Confirm:$false; Get-Content \"$env:USERPROFILE\\\\.condarc\" -ErrorAction SilentlyContinue)",
-      "PowerShell(Get-Content \"$env:TEMP\\\\claude\\\\setup_conda.log\" | Select-String -Pattern \"==>|Creating env|Interpreter:|ToS|Error|\\\\[OK\\\\]|\\\\[FAIL\\\\]|\\\\[WARN\\\\]|checks|Setup|Conda Environment|point it|EXIT\" | Select-Object -Last 30; Test-Path \"C:\\\\Nikhil\\\\Programs\\\\StudyBuddyAvatar-master\\\\StudyBuddyAvatar-master\\\\audio_model.bak\")"
+      "PowerShell(Get-Content \"$env:TEMP\\\\claude\\\\setup_conda.log\" | Select-String -Pattern \"==>|Creating env|Interpreter:|ToS|Error|\\\\[OK\\\\]|\\\\[FAIL\\\\]|\\\\[WARN\\\\]|checks|Setup|Conda Environment|point it|EXIT\" | Select-Object -Last 30; Test-Path \"C:\\\\Nikhil\\\\Programs\\\\StudyBuddyAvatar-master\\\\StudyBuddyAvatar-master\\\\audio_model.bak\")",
+      "Bash(git lfs *)",
+      "Bash(git count-objects *)",
+      "Bash(git config *)"
     ]
   }
 }

@@ -30,3 +30,11 @@ VISION_MESSAGES = {
 TTS_TIMEOUT = 15.0
 TTS_RATE = 165
 VOICE_SUPPRESS_WINDOW = 4.0   # seconds after a voice chat when vision alerts are muted
+
+# ---- Dataset tools (capture_tool.py, label_tool.py) ----
+DATA_YAML_PATH = os.path.join(BASE_DIR, "data.yaml")          # class names + order
+CAPTURE_DIR = os.path.join(BASE_DIR, "captured")              # captured/<Class>/*.jpg
+DATASET_FULL_DIR = os.path.join(BASE_DIR, "Dataset_Full")     # input to DatasetTrainTestSplit.py
+CAPTURE_FPS = 5               # frames saved per second while "Hold to Record" is pressed
+CAPTURE_SIZE = (640, 480)     # requested webcam resolution
+CAPTURE_DELAY = 0             # default countdown (seconds) before recording starts
