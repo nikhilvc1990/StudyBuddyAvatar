@@ -1,0 +1,15 @@
+# StudyBuddyAvatar runtime dependencies (Python 3.12 - 3.14, Windows x64)
+#
+# torch / torchvision are NOT listed here on purpose: setup.ps1 installs them
+# first from the PyTorch index (CUDA build if an NVIDIA GPU is found, CPU
+# otherwise). If installing by hand, do that first, e.g. CPU:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+PyQt6>=6.7,<7           # avatar window
+pyttsx3==2.99           # offline text-to-speech (Windows SAPI5 voices)
+pywin32>=306            # COM initialisation for pyttsx3 on a worker thread
+sounddevice>=0.5        # microphone input (bundles PortAudio)
+vosk>=0.3.41            # offline speech recognition
+opencv-python>=4.10     # webcam capture
+ultralytics>=8.4        # YOLO26 models (best.pt, yolo26n.pt) need 8.4+
+numpy>=2.0

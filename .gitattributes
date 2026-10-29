@@ -1,0 +1,2 @@
+audio_model/rescore/G.carpa filter=lfs diff=lfs merge=lfs -text
+audio_model/graph/HCLG.fst filter=lfs diff=lfs merge=lfs -text

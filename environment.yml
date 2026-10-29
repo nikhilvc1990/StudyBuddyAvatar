@@ -1,0 +1,13 @@
+# Conda environment for StudyBuddyAvatar.
+# conda provides only Python + pip; every library comes from pip (see requirements.txt).
+# Prefer running setup.bat, which also installs the right torch build and the voice model.
+# Manual use:  conda env create -f environment.yml
+#              then install torch (see requirements.txt header)
+name: studybuddy
+channels:
+  - conda-forge
+dependencies:
+  - python=3.14
+  - pip
+  - pip:
+      - -r requirements.txt

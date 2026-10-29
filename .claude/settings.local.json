@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(foreach \\($cu in \"cpu\",\"cu126\",\"cu128\",\"cu130\",\"cu132\"\\) { $null = py -3.13 -m pip install --dry-run --ignore-installed --no-deps --quiet torch torchvision --index-url \"https://download.pytorch.org/whl/$cu\" --only-binary=:all: --python-version 3.14 --platform win_amd64 --target \"$env:TEMP\\\\claude\\\\dryrun\" --report \"$env:TEMP\\\\claude\\\\$cu.json\" 2>&1; if \\(Test-Path \"$env:TEMP\\\\claude\\\\$cu.json\"\\) { \"$cu : \" + \\(\\(\\(Get-Content \"$env:TEMP\\\\claude\\\\$cu.json\" -Raw | ConvertFrom-Json\\).install | % { \"$\\($_.metadata.name\\)=$\\($_.metadata.version\\)\" }\\) -join ', '\\) } else { \"$cu : none\" } })",
+      "Bash(python -)",
+      "PowerShell(Remove-Item \"C:\\\\Nikhil\\\\Programs\\\\StudyBuddyAvatar-master\\\\StudyBuddyAvatar-master\\\\ActionDetector.py\" -Confirm:$false)",
+      "PowerShell(cd \"C:\\\\Nikhil\\\\Programs\\\\StudyBuddyAvatar-master\\\\StudyBuddyAvatar-master\"; py -3.13 -m py_compile avatar.py bridge.py main.py tts.py detection.py config.py check_setup.py ActionDetector_Model_Train.py DatasetTrainTestSplit.py voice.py brain.py; \"compile exit $LASTEXITCODE\")",
+      "PowerShell(Get-Content \"$env:TEMP\\\\claude\\\\setup_run1.log\" -Tail 40)",
+      "PowerShell(Get-Content \"$env:TEMP\\\\claude\\\\setup_run3.log\" -Tail 2)",
+      "PowerShell(Get-Content \"$env:TEMP\\\\claude\\\\setup_run3.log\" | Select-String -Pattern \"==>|\\\\[OK\\\\]|\\\\[FAIL\\\\]|\\\\[WARN\\\\]|Python \\\\d|checks|Setup|Vosk|audio_model|EXIT\" | Select-Object -Last 40)",
+      "PowerShell(cd \"C:\\\\Nikhil\\\\Programs\\\\StudyBuddyAvatar-master\\\\StudyBuddyAvatar-master\"; Get-ChildItem audio_model.bak -Recurse -File | Measure-Object Length -Sum | Select-Object Count, Sum; Remove-Item audio_model.bak -Recurse -Force -Confirm:$false; Get-Content \"$env:USERPROFILE\\\\.condarc\" -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Content \"$env:TEMP\\\\claude\\\\setup_conda.log\" | Select-String -Pattern \"==>|Creating env|Interpreter:|ToS|Error|\\\\[OK\\\\]|\\\\[FAIL\\\\]|\\\\[WARN\\\\]|checks|Setup|Conda Environment|point it|EXIT\" | Select-Object -Last 30; Test-Path \"C:\\\\Nikhil\\\\Programs\\\\StudyBuddyAvatar-master\\\\StudyBuddyAvatar-master\\\\audio_model.bak\")"
+    ]
+  }
+}

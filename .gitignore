@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# IDE (PyCharm settings are per-machine; each user picks the studybuddy interpreter)
+.idea/
+
+# Training outputs / caches
+runs/
+dataset/images/
+dataset/labels/*.cache
+Dataset_Full/
+
+# Setup leftovers
+audio_model.bak/
