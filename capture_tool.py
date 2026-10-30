@@ -50,13 +50,20 @@ class ClassCard(QFrame):
 
         color = class_color(idx).name()
         self.setObjectName("card")
+        # Explicit colours: the card is always white, so text/buttons must not follow
+        # the Windows dark-mode palette (light text) or they vanish.
         self.setStyleSheet(f"""
             QFrame#card {{ background: white; border: 1px solid #ddd;
                           border-left: 6px solid {color}; border-radius: 8px; }}
+            QFrame#card QLabel {{ color: #222; background: transparent; }}
+            QFrame#card QPushButton {{ color: #222; background: #eceff3; border: 1px solid #b8bec6;
+                                      border-radius: 4px; padding: 5px 10px; }}
+            QFrame#card QPushButton:hover {{ background: #dde2e8; }}
+            QFrame#card QPushButton:pressed {{ background: #c9d0d8; }}
         """)
 
         title = QLabel(f"<b>{idx + 1}. {name}</b>")
-        title.setStyleSheet("font-size: 15px; border: none;")
+        title.setStyleSheet("font-size: 15px; border: none; color: #222;")
         self.count_label = QLabel()
         self.count_label.setStyleSheet("color: #555; border: none;")
         open_btn = QPushButton("Open folder")
@@ -73,7 +80,8 @@ class ClassCard(QFrame):
 
         self.record_btn = QPushButton("● Hold to Record")
         self.record_btn.setStyleSheet(
-            f"QPushButton {{ background: {color}; color: white; font-weight: bold; padding: 6px 12px; }}"
+            f"QPushButton {{ background: {color}; color: white; font-weight: bold; padding: 6px 12px;"
+            " border: none; border-radius: 4px; }"
             "QPushButton:pressed { background: #c62828; }"
         )
         self.record_btn.pressed.connect(lambda: window.start_recording(self))
@@ -231,7 +239,7 @@ class CaptureWindow(QMainWindow):
         hint = QLabel("Tip: hold keys 1–9 to record that class, Space = snapshot of the last used class. "
                       "Images are saved un-mirrored, as the detector sees them.")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #666;")
+        hint.setStyleSheet("color: #888;")     # mid-grey: readable on light and dark
 
         left = QVBoxLayout()
         left.addWidget(self.preview, 1)
@@ -246,7 +254,6 @@ class CaptureWindow(QMainWindow):
         add_btn.setStyleSheet("padding: 10px; border: 2px dashed #aaa; color: #555;")
         add_btn.clicked.connect(self.add_class)
         label_btn = QPushButton("Next: label boxes →")
-        label_btn.setStyleSheet("padding: 10px; font-weight: bold;")
         label_btn.clicked.connect(self.open_label_tool)
 
         cards_widget = QWidget()
@@ -262,6 +269,8 @@ class CaptureWindow(QMainWindow):
         scroll.setMinimumWidth(600)
         scroll.setStyleSheet("QScrollArea { background: #f0f2f5; border: none; }")
         cards_widget.setStyleSheet("background: #f0f2f5;")
+        label_btn.setStyleSheet("padding: 10px; font-weight: bold; color: #222; background: #e3e7ec;"
+                                " border: 1px solid #b8bec6; border-radius: 4px;")
 
         root = QWidget()
         main = QHBoxLayout(root)

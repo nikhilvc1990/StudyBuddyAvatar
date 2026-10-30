@@ -447,7 +447,7 @@ class LabelWindow(QMainWindow):
             "Wheel = zoom, right-drag = pan, F = fit.\n"
             "Esc = deselect, Ctrl+Z = undo.\n"
             "Saves automatically when you change image.")
-        help_lbl.setStyleSheet("color: #666;")
+        help_lbl.setStyleSheet("color: #888;")     # mid-grey: readable on light and dark
         rv.addWidget(help_lbl)
         for w in right.findChildren(QPushButton) + left.findChildren(QPushButton):
             w.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -518,7 +518,8 @@ class LabelWindow(QMainWindow):
         item = self.file_list.item(i)
         mark = "✓" if self._is_labelled(path) else "·"
         item.setText(f"{mark} {path.parent.name}/{path.name}")
-        item.setForeground(QColor("#2e7d32") if mark == "✓" else QColor("#333"))
+        # Unlabelled rows keep the theme's text colour (readable in light and dark mode)
+        item.setForeground(QColor("#43a047") if mark == "✓" else self.file_list.palette().text())
 
     def _refresh_list_visibility(self):
         only = self.unlabelled_only.isChecked()
