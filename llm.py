@@ -109,7 +109,9 @@ class LLMBrain:
 
         messages = [{"role": "system", "content": self._system_prompt()}]
         messages += list(self._history)
-        messages.append({"role": "user", "content": text})
+        # Camera info goes with the current question (small models weigh it more
+        # there); history keeps only the plain question
+        messages.append({"role": "user", "content": self._camera_note() + text})
 
         reply, buffer, spoke = [], "", False
         try:
@@ -156,14 +158,18 @@ class LLMBrain:
 
     def _system_prompt(self):
         now = datetime.datetime.now()
-        parts = [LLM_SYSTEM_PROMPT,
-                 f"Current date and time: {now.strftime('%A, %d %B %Y, %I:%M %p')}."]
-        if self.get_vision_state:
-            state, age = self.get_vision_state()
-            if state in VISION_DESCRIPTIONS and age <= VISION_CONTEXT_MAX_AGE:
-                parts.append(f"From the webcam, {VISION_DESCRIPTIONS[state]} "
-                             f"(seen {int(age)} seconds ago).")
-        return " ".join(parts)
+        return (f"{LLM_SYSTEM_PROMPT} "
+                f"Current date and time: {now.strftime('%A, %d %B %Y, %I:%M %p')}. "
+                f"A note in square brackets before the student's words tells you what "
+                f"the webcam sees right now; use it when relevant.")
+
+    def _camera_note(self):
+        if not self.get_vision_state:
+            return ""
+        state, age = self.get_vision_state()
+        if state in VISION_DESCRIPTIONS and age <= VISION_CONTEXT_MAX_AGE:
+            return f"[Webcam right now: {VISION_DESCRIPTIONS[state]}.] "
+        return ""
 
 
 def _short_error(e):

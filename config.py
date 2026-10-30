@@ -6,7 +6,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SAMPLERATE = 16000          # Vosk requires 16 kHz
 BLOCKSIZE = 8000            # ~0.5 s of audio per callback
 WAKE_WORD = "david"
+# Words the speech model sometimes hears instead of the wake word
+WAKE_WORD_ALIASES = ["david", "dave", "davit", "davis", "davide", "devid"]
 LISTEN_TIMEOUT = 10.0       # seconds to wait for a command after wake word
+# Microphone: None = Windows default input, or part of the device name, e.g. "Realtek"
+# or "Buds" (run mic_test.py to list the names), or the device number.
+MIC_DEVICE = None
 VOSK_MODEL_PATH = os.path.join(BASE_DIR, "audio_model")
 
 # ---- Vision ----

@@ -32,6 +32,12 @@ If Ollama isn't installed or running, the model isn't downloaded, or the laptop 
 - Change the personality or answer length: `LLM_SYSTEM_PROMPT` and `LLM_MAX_TOKENS` in `config.py`.
 - Turn it off: `LLM_ENABLED = False`.
 
+### Testing the voice and the AI separately
+
+1. **AI only (no mic):** run `chat_test.py` (in PyCharm: right-click it, then **Run**, and type in the Run console). Type questions. Each answer is marked **[LLM]** (from Ollama) or **[built-in]** (fallback). Type `phone`, `sleeping` or `reading` to pretend the camera sees that, then ask "how is my focus". `python chat_test.py --speak` also reads the answers aloud.
+2. **Mic only:** run `mic_test.py`. It lists the microphones and shows a live level bar plus what the speech model hears. Say "david" and look for `<-- WAKE WORD`. If the bar doesn't move when you talk, try another mic, e.g. `python mic_test.py Realtek`, then put that name in `MIC_DEVICE` in `config.py`.
+3. **Everything:** run `main.py`. Say **"david"** and pause: the avatar turns green and says "Yes? I'm listening". Then ask your question. Or say it in one go: "david, what is gravity". The Run console shows `[Voice] Microphone: ...`, `Heard: ...` and `[LLM] ready`.
+
 ## Building a dataset offline (no Teachable Machine / Label Studio needed)
 
 Run these in PyCharm (right-click the file → **Run**) or from the project folder, in order:
@@ -78,6 +84,7 @@ Capture folders, output paths and the record rate are set in `config.py` under *
 | `avatar.py`, `bridge.py` | PyQt6 avatar window and thread-safe UI signals |
 | `detection.py` | Webcam + YOLO detection thread (`python detection.py` runs a standalone preview) |
 | `voice.py`, `brain.py` | Wake word / command recognition; brain picks the LLM or built-in replies |
+| `chat_test.py`, `mic_test.py` | Test the AI by typing, and test the microphone / wake word, separately |
 | `llm.py` | Local LLM client (Ollama): streaming answers, memory, camera context, automatic fallback |
 | `tts.py` | Prioritised text-to-speech queue |
 | `check_setup.py` | Environment health check |

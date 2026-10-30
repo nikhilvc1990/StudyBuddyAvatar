@@ -97,6 +97,7 @@ Outside PyCharm, double-click **`run.bat`**.
 | `[LLM] not available (not enough memory ...)` | Use a smaller model: set `LLM_MODEL = "llama3.2:3b"` in `config.py` and `ollama pull llama3.2:3b`. Or set `LLM_ENABLED = False`. |
 | First AI answer is slow | The model loads into memory on first use (10–30 s). After that answers start in ~1–2 s. It stays loaded for 30 min (`LLM_KEEP_ALIVE`). |
 | `[Vision] Camera not accessible` | Check step 5, close other apps using the camera (Teams, Zoom), or change `CAMERA_INDEX` in `config.py`. |
+| Avatar doesn't react to "david" | Check the first lines of the Run console: `[Voice] Microphone: <name>` must be a mic you're actually using, and there must be no `seems silent` warning. A Bluetooth headset that's connected but not worn is a common cause. Run `mic_test.py` to see the level and what is heard, then set `MIC_DEVICE` in `config.py` (e.g. `"Realtek"`). Say "david" clearly and pause briefly. |
 | No reply after saying the wake word | Check the microphone permission (step 5) and the default input device in Windows Sound settings. The wake word is set by `WAKE_WORD` in `config.py`. |
 | Silent text-to-speech | Make sure at least one voice is installed (step 6) and the default output device isn't muted. |
 
