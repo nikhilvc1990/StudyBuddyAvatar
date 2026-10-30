@@ -121,9 +121,15 @@ class VisionThread(threading.Thread):
         self.show_preview = show_preview
         self.filter = StateFilter()
         self._stop_flag = threading.Event()
+        self.last_state = None
+        self.last_state_at = 0.0
 
     def stop(self):
         self._stop_flag.set()
+
+    def get_state(self):
+        """Most recent detected class and how many seconds ago it was seen."""
+        return self.last_state, time.time() - self.last_state_at
 
     def run(self):
         try:
@@ -162,6 +168,7 @@ class VisionThread(threading.Thread):
                 state, conf = detector.pick_state(detected)
                 if state is None:
                     continue
+                self.last_state, self.last_state_at = state, now
                 print(f"[Vision] Detected: {detected}")
 
                 if self.filter.update(state):

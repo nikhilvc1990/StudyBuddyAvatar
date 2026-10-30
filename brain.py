@@ -2,8 +2,11 @@ import datetime
 import random
 import re
 
+from llm import LLMBrain
 
-def get_voice_response(text):
+
+def get_rule_response(text):
+    """Built-in keyword replies, used when the local LLM isn't available."""
     t = text.lower()
 
     if re.search(r"\b(hello|hi|hey)\b", t):
@@ -31,3 +34,19 @@ def get_voice_response(text):
         return random.choice(["You're welcome!", "Happy to help!", "Anytime!"])
 
     return f"I heard: {text}. I'm still learning!"
+
+
+class Brain:
+    """Answers voice commands with the local LLM, or the built-in replies as a fallback."""
+
+    def __init__(self, get_vision_state=None):
+        self.llm = LLMBrain(get_vision_state)
+        self.llm.start()
+
+    def respond(self, text, on_sentence):
+        """Call on_sentence(str) for each part of the reply as it becomes ready."""
+        if re.search(r"\b(bye|goodbye|stop)\b", text.lower()):
+            on_sentence(get_rule_response(text))
+            return
+        if self.llm.ask(text, on_sentence) is None:
+            on_sentence(get_rule_response(text))

@@ -3,6 +3,7 @@ import sys
 from PyQt6.QtWidgets import QApplication
 
 from avatar import AssistantWindow
+from brain import Brain
 from bridge import Bridge
 from config import VISION_MESSAGES, ALERT_STATES
 from detection import VisionThread
@@ -26,7 +27,8 @@ def main():
         return tts.speak_vision(msg, state_during=during, state_after="idle")
 
     vision = VisionThread(on_alert=handle_alert)
-    voice = VoiceThread(bridge, tts)
+    brain = Brain(get_vision_state=vision.get_state)   # local LLM, or built-in replies
+    voice = VoiceThread(bridge, tts, brain)
 
     vision.start()
     voice.start()

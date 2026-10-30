@@ -2,7 +2,7 @@
 import importlib
 import sys
 
-from config import VOSK_MODEL_PATH, YOLO_MODEL_PATH, CAMERA_INDEX
+from config import VOSK_MODEL_PATH, YOLO_MODEL_PATH, CAMERA_INDEX, LLM_ENABLED, LLM_URL, LLM_MODEL
 
 ok = True
 
@@ -71,6 +71,29 @@ def camera():
         cap.release()
 
 
+def local_llm():
+    import time
+    import requests
+    if not LLM_ENABLED:
+        return "disabled in config.py (built-in replies)"
+    try:
+        tags = requests.get(f"{LLM_URL}/api/tags", timeout=2).json()
+    except requests.ConnectionError:
+        raise RuntimeError("Ollama not running/installed - built-in replies will be used")
+    names = {m.get("name") for m in tags.get("models", [])}
+    if LLM_MODEL not in names and f"{LLM_MODEL}:latest" not in names:
+        raise RuntimeError(f"model not pulled (ollama pull {LLM_MODEL}) - built-in replies will be used")
+    start = time.time()
+    r = requests.post(f"{LLM_URL}/api/chat", json={
+        "model": LLM_MODEL, "stream": False, "think": False,
+        "messages": [{"role": "user", "content": "In one short sentence, what is photosynthesis?"}],
+        "options": {"num_predict": 60},
+    }, timeout=180)
+    r.raise_for_status()
+    answer = r.json()["message"]["content"].strip()
+    return f"{LLM_MODEL} answered in {time.time() - start:.1f}s: {answer[:70]}"
+
+
 print(f"Python {sys.version.split()[0]} at {sys.executable}")
 print("Packages:")
 for mod in ("PyQt6.QtCore", "pyttsx3", "sounddevice", "vosk", "cv2", "ultralytics", "numpy"):
@@ -83,6 +106,7 @@ print("Devices (warnings only):")
 warn("Text-to-speech", tts_voices)
 warn("Microphone", microphone)
 warn("Camera", camera)
+warn("Local AI brain (optional)", local_llm)
 
 print("\nAll required checks passed." if ok else "\nSome required checks FAILED.")
 sys.exit(0 if ok else 1)

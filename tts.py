@@ -26,6 +26,7 @@ class TTSEngine:
 
         self.last_voice_spoke_at = 0.0
         self._voice_lock = threading.Lock()
+        self._restore_timer = None
 
         threading.Thread(target=self._worker, daemon=True, name="TTS").start()
 
@@ -38,6 +39,13 @@ class TTSEngine:
     def speak(self, text, state_after="idle"):
         """Voice-priority speech (wake-word reply, command answers)."""
         self._enqueue(text, "talking", state_after, self.PRIO_VOICE)
+
+    def set_state_when_done(self, state):
+        """Queue a state change that happens after everything queued so far is spoken."""
+        with self._counter_lock:
+            self._counter += 1
+            count = self._counter
+        self._queue.put((self.PRIO_VOICE, count, None, None, state, True))
 
     def speak_vision(self, text, state_during="talking", state_after="idle"):
         """
@@ -70,6 +78,8 @@ class TTSEngine:
 
     def _speak_one(self, text, state_during, state_after, is_voice):
         display = text[:80] + ("…" if len(text) > 80 else "")
+        if self._restore_timer is not None:
+            self._restore_timer.cancel()   # a multi-sentence reply is still going
         self.bridge.set_message.emit(display)
         self.bridge.set_state.emit(state_during)
 
@@ -91,10 +101,11 @@ class TTSEngine:
             self.mark_voice_interaction()
             # Restore the prompt after 2.5 s (QTimer doesn't work from this
             # thread, so use threading.Timer; the signal is thread-safe)
-            threading.Timer(
+            self._restore_timer = threading.Timer(
                 2.5,
                 lambda: self.bridge.set_message.emit(f"Say '{WAKE_WORD}' to wake me…")
-            ).start()
+            )
+            self._restore_timer.start()
 
         self.bridge.set_state.emit(state_after)
 
@@ -108,6 +119,10 @@ class TTSEngine:
                 continue
 
             _, _, text, state_during, state_after, is_voice = item
+            if text is None:                     # set_state_when_done marker
+                self.bridge.set_state.emit(state_after)
+                self._queue.task_done()
+                continue
             print(f"  Buddy [{'voice' if is_voice else 'vision'}]: {text}")
             self.is_speaking.set()
             try:

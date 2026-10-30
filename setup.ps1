@@ -9,7 +9,10 @@
   3. Installs requirements.txt.
   4. Downloads the Vosk speech model if audio_model/ is missing or only
      contains Git LFS placeholder files.
-  5. Runs check_setup.py and prints the interpreter path for PyCharm.
+  5. Optional local AI brain: if the laptop has >= 6 GB NVIDIA VRAM or
+     >= 16 GB RAM and Ollama is installed, pulls the LLM model from config.py.
+     Otherwise skipped - the avatar then uses its built-in replies.
+  6. Runs check_setup.py and prints the interpreter path for PyCharm.
 
   Safe to re-run: existing env and model are reused.
 
@@ -17,11 +20,16 @@
   .\setup.ps1                # normal
   .\setup.ps1 -Cpu           # force CPU-only PyTorch
   .\setup.ps1 -NoConda       # use a plain .venv even if conda exists
+  .\setup.ps1 -InstallOllama # also install Ollama (local LLM) with winget
+  .\setup.ps1 -SkipLLM       # no local LLM; built-in replies only
 #>
 param(
     [switch]$Cpu,
     [switch]$NoConda,
     [switch]$SkipModel,
+    [switch]$SkipLLM,          # don't set up the local AI brain at all
+    [switch]$InstallOllama,    # install Ollama with winget if it's missing
+    [switch]$ForceLLM,         # set up the LLM even if the hardware check fails
     [string]$EnvName = "studybuddy",
     [string]$PythonVersion = "3.14"
 )
@@ -33,6 +41,10 @@ Set-Location $ProjectDir
 $VoskModelName = "vosk-model-en-in-0.5"
 $VoskModelUrl  = "https://alphacephei.com/vosk/models/$VoskModelName.zip"
 $TorchIndex    = "https://download.pytorch.org/whl"
+
+# Local LLM is only set up on laptops that can run it comfortably
+$LlmMinVramGB = 6      # NVIDIA GPU memory, or...
+$LlmMinRamGB  = 15     # ...system RAM for CPU-only (a "16 GB" laptop reports ~15.3)
 
 function Step($msg)  { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Info($msg)  { Write-Host "    $msg" }
@@ -128,20 +140,32 @@ if (-not $Cpu) {
         $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
         $smiOut = & nvidia-smi 2>$null | Out-String
         $ErrorActionPreference = $old
-        if ($smiOut -match "CUDA Version:\s*(\d+)\.(\d+)") {
+        # Older drivers print "CUDA Version: 12.6", newer ones "CUDA UMD Version: 13.3"
+        if ($smiOut -match "CUDA (?:UMD )?Version:\s*(\d+)\.(\d+)") {
             $major = [int]$Matches[1]; $minor = [int]$Matches[2]
             Info "NVIDIA driver supports CUDA $major.$minor"
             if ($major -gt 13 -or ($major -eq 13 -and $minor -ge 2)) { $flavor = "cu132" }
             elseif ($major -eq 13) { $flavor = "cu130" }
             elseif ($major -eq 12 -and $minor -ge 6) { $flavor = "cu126" }
             else { Info "Driver too old for current PyTorch CUDA builds - update it for GPU support." }
+        } else {
+            Info "Could not read the CUDA version from nvidia-smi - using the CPU build."
         }
     } else {
         Info "No NVIDIA GPU detected."
     }
 }
 Info "Using PyTorch build: $flavor"
-Invoke-Native $Python @("-m", "pip", "install", "torch", "torchvision", "--index-url", "$TorchIndex/$flavor")
+$torchArgs = @("-m", "pip", "install", "torch", "torchvision", "--index-url", "$TorchIndex/$flavor")
+# pip treats 2.15.0+cpu as satisfying "torch", so switch builds explicitly on re-runs
+$old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+$installed = & $Python -c "import torch; print(torch.__version__)" 2>$null
+$ErrorActionPreference = $old
+if ($installed -and $installed -notlike "*+$flavor") {
+    Info "Replacing installed torch $installed with the $flavor build"
+    $torchArgs += @("--force-reinstall", "--no-deps")
+}
+Invoke-Native $Python $torchArgs
 
 # ---------------------------------------------------------------- 3. Requirements
 Step "Installing requirements.txt"
@@ -191,7 +215,93 @@ if ($SkipModel) {
     Info "Vosk model installed."
 }
 
-# ---------------------------------------------------------------- 5. Health check
+# ---------------------------------------------------------------- 5. Local LLM (optional)
+# Never fails setup: without an LLM the avatar uses its built-in replies.
+function Find-Ollama {
+    $cmd = Get-Command ollama -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    $exe = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
+    if (Test-Path $exe) { return $exe }
+    return $null
+}
+
+function Test-OllamaServer {
+    try { Invoke-RestMethod "http://127.0.0.1:11434/api/tags" -TimeoutSec 2 | Out-Null; return $true }
+    catch { return $false }
+}
+
+function Install-LocalLLM {
+    $ramGB = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
+    $vramGB = 0
+    if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
+        $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+        $mib = & nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>$null | Select-Object -First 1
+        $ErrorActionPreference = $old
+        if ($mib -match "^\s*(\d+)") { $vramGB = [math]::Round([int]$Matches[1] / 1024, 1) }
+    }
+    Info "Found $ramGB GB RAM, $vramGB GB NVIDIA VRAM"
+    if (-not $ForceLLM -and $vramGB -lt $LlmMinVramGB -and $ramGB -lt $LlmMinRamGB) {
+        Info ("This laptop doesn't meet the local-AI requirements (needs $LlmMinVramGB GB VRAM " +
+              "or $LlmMinRamGB GB RAM). StudyBuddy will use its built-in replies.")
+        return
+    }
+
+    $ollama = Find-Ollama
+    if (-not $ollama) {
+        if (-not $InstallOllama) {
+            Info "Ollama is not installed. To enable the AI brain, install it and re-run setup:"
+            Info "    winget install Ollama.Ollama      (or setup.bat -InstallOllama)"
+            Info "Until then StudyBuddy uses its built-in replies."
+            return
+        }
+        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            Write-Host "    WARNING: winget not found - install Ollama from https://ollama.com/download" -ForegroundColor Yellow
+            return
+        }
+        Info "Installing Ollama..."
+        $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+        & winget install --id Ollama.Ollama -e --accept-source-agreements --accept-package-agreements
+        $ErrorActionPreference = $old
+        $ollama = Find-Ollama
+        if (-not $ollama) {
+            Write-Host "    WARNING: Ollama install failed - StudyBuddy will use its built-in replies." -ForegroundColor Yellow
+            return
+        }
+    }
+    Info "Ollama: $ollama"
+
+    if (-not (Test-OllamaServer)) {
+        Info "Starting Ollama..."
+        Start-Process $ollama -ArgumentList "serve" -WindowStyle Hidden
+        for ($i = 0; $i -lt 20 -and -not (Test-OllamaServer); $i++) { Start-Sleep -Seconds 1 }
+        if (-not (Test-OllamaServer)) {
+            Write-Host "    WARNING: Ollama did not start - StudyBuddy will use its built-in replies." -ForegroundColor Yellow
+            return
+        }
+    }
+
+    $model = (& $Python -c "import config; print(config.LLM_MODEL)").Trim()
+    Info "Pulling model $model (a few GB the first time)..."
+    $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    & $ollama pull $model
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $old
+    if ($code -ne 0) {
+        Write-Host "    WARNING: could not pull $model - StudyBuddy will use its built-in replies." -ForegroundColor Yellow
+        return
+    }
+    Info "Local AI brain ready ($model)."
+}
+
+Step "Local AI brain (Ollama)"
+if ($SkipLLM) {
+    Info "Skipped (-SkipLLM). StudyBuddy will use its built-in replies."
+} else {
+    try { Install-LocalLLM }
+    catch { Write-Host "    WARNING: LLM setup failed ($_) - StudyBuddy will use its built-in replies." -ForegroundColor Yellow }
+}
+
+# ---------------------------------------------------------------- 6. Health check
 Step "Running health check"
 $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
 & $Python (Join-Path $ProjectDir "check_setup.py")

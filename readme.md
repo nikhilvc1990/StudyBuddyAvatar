@@ -17,6 +17,21 @@ Drag the avatar to move it; double-click it to quit.
 
 Requires Python 3.12–3.14 (setup uses **3.14**).
 
+## Local AI brain (optional)
+
+When **Ollama** is running with the model from `config.py` (`LLM_MODEL`, default `gemma4:e4b`), voice questions are answered by that local LLM. The answers:
+- are short and spoken sentence by sentence, as soon as each one is ready
+- remember the last few exchanges, so follow-up questions work
+- know the time and what the camera currently sees (e.g. that you're on your phone)
+
+Study alerts keep their fixed messages from `config.py`.
+
+If Ollama isn't installed or running, the model isn't downloaded, or the laptop is too weak, the avatar quietly uses its **built-in replies** (`brain.py`). It switches back to the LLM automatically when it becomes available. Console lines starting with `[LLM]` say which mode it's in.
+
+- Change the model: set `LLM_MODEL` in `config.py`, then `ollama pull <model>`. Good small options: `gemma4:e4b`, `qwen3.5:4b`, `gemma3:4b`, `llama3.2:3b` (fastest).
+- Change the personality or answer length: `LLM_SYSTEM_PROMPT` and `LLM_MAX_TOKENS` in `config.py`.
+- Turn it off: `LLM_ENABLED = False`.
+
 ## Building a dataset offline (no Teachable Machine / Label Studio needed)
 
 Run these in PyCharm (right-click the file → **Run**) or from the project folder, in order:
@@ -62,7 +77,8 @@ Capture folders, output paths and the record rate are set in `config.py` under *
 | `config.py` | All settings (wake word, camera index, thresholds, messages) |
 | `avatar.py`, `bridge.py` | PyQt6 avatar window and thread-safe UI signals |
 | `detection.py` | Webcam + YOLO detection thread (`python detection.py` runs a standalone preview) |
-| `voice.py`, `brain.py` | Wake word / command recognition and canned replies |
+| `voice.py`, `brain.py` | Wake word / command recognition; brain picks the LLM or built-in replies |
+| `llm.py` | Local LLM client (Ollama): streaming answers, memory, camera context, automatic fallback |
 | `tts.py` | Prioritised text-to-speech queue |
 | `check_setup.py` | Environment health check |
 | `audio_model/` | Vosk Indian-English model (`vosk-model-en-in-0.5`, downloaded by setup) |

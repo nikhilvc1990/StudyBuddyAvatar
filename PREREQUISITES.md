@@ -7,7 +7,8 @@ Follow these steps in order on a new Windows laptop. Steps 1–6 are one-time in
 | Item | Requirement |
 |---|---|
 | OS | Windows 10 (21H2+) or Windows 11, **64-bit** |
-| Disk | ~6 GB free (Python env ~2 GB, speech model ~1 GB, CUDA PyTorch adds ~2.5 GB) |
+| Disk | ~6 GB free (Python env ~2 GB, speech model ~1 GB, CUDA PyTorch adds ~2.5 GB); +~4 GB for the optional local AI |
+| Local AI (optional) | NVIDIA GPU with 6 GB+ VRAM, **or** 16 GB RAM. Without it, the avatar uses built-in replies. |
 | Hardware | Webcam and microphone (built-in is fine). An NVIDIA GPU is optional. |
 | Network | Internet for the first setup only. The app runs fully offline afterwards. |
 
@@ -43,6 +44,18 @@ Install PyCharm from <https://www.jetbrains.com/pycharm/download/?section=window
 
 If the laptop has an NVIDIA GPU, install the latest **Game Ready / Studio driver** from <https://www.nvidia.com/Download/index.aspx>. You do **not** need the CUDA Toolkit: PyTorch ships its own CUDA runtime. `setup.bat` detects the GPU (with `nvidia-smi`) and installs the matching PyTorch build. Without a GPU everything runs on the CPU, which is fine for this small model.
 
+## 4b. Ollama: local AI brain (optional)
+
+With a local LLM the avatar gives real answers ("explain photosynthesis", "help me plan my revision") instead of fixed replies. It runs fully offline on your laptop.
+
+- **Skip this step** if the laptop has less than 6 GB of NVIDIA VRAM **and** less than 16 GB RAM. `setup.bat` also checks this and skips the AI step on weaker laptops. Everything else works the same, with built-in replies.
+- Install it with `winget install Ollama.Ollama`, or download it from <https://ollama.com/download>. Ollama then runs in the background (llama icon in the system tray) and starts with Windows.
+- `setup.bat` downloads the model set in `config.py` (`LLM_MODEL`, default `gemma4:e4b`, about 3–4 GB). To do it by hand:
+  ```
+  ollama pull gemma4:e4b
+  ```
+- If you'd rather setup installed Ollama for you: `setup.bat -InstallOllama`.
+
 ## 5. Windows camera and microphone permissions
 
 Open **Settings → Privacy & security**:
@@ -62,7 +75,7 @@ Windows includes SAPI voices (e.g. *Microsoft David / Zira*), so nothing is need
    - downloads the Vosk speech model (~1 GB) if `audio_model/` is incomplete
    - runs `check_setup.py` and prints the interpreter path for PyCharm
 
-   Options: `setup.bat -Cpu` (force CPU PyTorch), `setup.bat -NoConda` (force .venv).
+   Options: `setup.bat -Cpu` (force CPU PyTorch), `setup.bat -NoConda` (force .venv), `setup.bat -InstallOllama` (also install the local AI), `setup.bat -SkipLLM` (no local AI).
 3. In **PyCharm**: *File → Open* the project folder, then *Settings → Project → Python Interpreter → Add Interpreter → Add Local Interpreter → Conda Environment → Use existing environment → `studybuddy`*.
    Do **not** choose *Create new environment* in PyCharm. `setup.bat` has already created the env with the right packages, and a PyCharm-created env would be empty.
 4. Open `main.py` and press **Run**. If you create a run configuration by hand, set the **working directory to the project folder**.
@@ -79,6 +92,10 @@ Outside PyCharm, double-click **`run.bat`**.
 | `CondaToSNonInteractiveError: Terms of Service have not been accepted` | conda is still using Anaconda's default channels. Run the three `conda config` commands from step 2, then in PyCharm pick *Use existing → studybuddy* instead of creating a new env. (Or accept the terms with the `conda tos accept ...` commands shown in the error; they're free for education and small organisations.) |
 | `conda` not recognised in setup | Run `conda init powershell` from Anaconda Prompt (step 2), or install Miniconda in its default location. |
 | `ERROR: audio_model missing!` / Vosk fails to load | Re-run `setup.bat`; it re-downloads the model. Behind a proxy, download `vosk-model-en-in-0.5.zip` from <https://alphacephei.com/vosk/models> manually and extract its contents into `audio_model\`. |
+| Console says `[LLM] not available (Ollama is not running)` | Start **Ollama** from the Start menu (the tray icon should appear). The avatar picks it up again within a minute. Built-in replies are used meanwhile. |
+| `[LLM] not available (model not pulled ...)` | Run the `ollama pull ...` command it shows, or re-run `setup.bat`. |
+| `[LLM] not available (not enough memory ...)` | Use a smaller model: set `LLM_MODEL = "llama3.2:3b"` in `config.py` and `ollama pull llama3.2:3b`. Or set `LLM_ENABLED = False`. |
+| First AI answer is slow | The model loads into memory on first use (10–30 s). After that answers start in ~1–2 s. It stays loaded for 30 min (`LLM_KEEP_ALIVE`). |
 | `[Vision] Camera not accessible` | Check step 5, close other apps using the camera (Teams, Zoom), or change `CAMERA_INDEX` in `config.py`. |
 | No reply after saying the wake word | Check the microphone permission (step 5) and the default input device in Windows Sound settings. The wake word is set by `WAKE_WORD` in `config.py`. |
 | Silent text-to-speech | Make sure at least one voice is installed (step 6) and the default output device isn't muted. |

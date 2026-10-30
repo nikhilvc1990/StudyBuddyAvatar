@@ -13,3 +13,4 @@ vosk>=0.3.41            # offline speech recognition
 opencv-python>=4.10     # webcam capture
 ultralytics>=8.4        # YOLO26 models (best.pt, yolo26n.pt) need 8.4+
 numpy>=2.0
+requests>=2.31         # talks to the local LLM (Ollama)

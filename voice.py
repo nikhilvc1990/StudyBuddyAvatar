@@ -7,17 +7,18 @@ import time
 import sounddevice as sd
 import vosk
 
-from brain import get_voice_response
 from config import SAMPLERATE, BLOCKSIZE, WAKE_WORD, LISTEN_TIMEOUT, VOSK_MODEL_PATH
 
 audio_queue = queue.Queue()
 
 
 class VoiceThread(threading.Thread):
-    def __init__(self, bridge, tts):
+    def __init__(self, bridge, tts, brain):
         super().__init__(daemon=True, name="Voice")
         self.bridge = bridge
         self.tts = tts
+        self.brain = brain
+        self.busy = threading.Event()       # set while a reply is being generated
         self.listening = False
         self._listen_since = 0.0
         self._stop_flag = threading.Event()
@@ -71,6 +72,8 @@ class VoiceThread(threading.Thread):
                 if not text:
                     continue
                 print(f"Heard: {text}")
+                if self.busy.is_set():
+                    continue    # still answering the previous question
 
                 if not self.listening:
                     # Phase 1: wake word
@@ -82,11 +85,24 @@ class VoiceThread(threading.Thread):
                         self.listening = True
                         self._listen_since = time.time()
                 else:
-                    # Phase 2: command
+                    # Phase 2: command - answered on its own thread so the mic
+                    # keeps being read while the LLM thinks
                     print(">>> Processing command…")
                     self.bridge.set_state.emit("thinking")
                     self.bridge.set_message.emit("Thinking…")
-                    self.tts.speak(get_voice_response(text), state_after="idle")
                     self.listening = False
                     self._listen_since = 0.0
-                    print(f"Listening for wake word: '{WAKE_WORD}'")
+                    self.busy.set()
+                    threading.Thread(target=self._answer, args=(text,),
+                                     daemon=True, name="Answer").start()
+
+    def _answer(self, text):
+        try:
+            # Each sentence is spoken as soon as it's ready
+            self.brain.respond(text, lambda s: self.tts.speak(s, state_after="talking"))
+        except Exception as e:
+            print(f"[Voice] Answer error: {e}")
+        finally:
+            self.tts.set_state_when_done("idle")
+            self.busy.clear()
+            print(f"Listening for wake word: '{WAKE_WORD}'")
