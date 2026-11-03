@@ -87,6 +87,7 @@ Outside PyCharm, double-click **`run.bat`**.
 | Symptom | Fix |
 |---|---|
 | `running scripts is disabled on this system` | Use `setup.bat` (it bypasses the policy for that run only), not `setup.ps1` directly. |
+| `[WinError 4551] An Application Control policy has blocked this file ... c10.dll` (console shows `[Vision] Disabled`) | **Windows Smart App Control** is blocking PyTorch, which is needed for the camera detection. Voice and the AI still work. To fix it, open *Windows Security → App & browser control → Smart App Control settings* and choose **Off**. On some Windows versions it can't be turned back on without resetting Windows, so decide whether that's acceptable. |
 | `WinError 126 ... c10.dll` / `fbgemm.dll` | Install the VC++ redistributable (step 1) and reboot. |
 | PyCharm doesn't list `studybuddy` | Choose *Python interpreter path* and browse to `%USERPROFILE%\miniconda3\envs\studybuddy\python.exe`. |
 | `CondaToSNonInteractiveError: Terms of Service have not been accepted` | conda is still using Anaconda's default channels. Run the three `conda config` commands from step 2, then in PyCharm pick *Use existing → studybuddy* instead of creating a new env. (Or accept the terms with the `conda tos accept ...` commands shown in the error; they're free for education and small organisations.) |

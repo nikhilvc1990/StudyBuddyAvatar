@@ -3,9 +3,10 @@ import time
 import threading
 
 import cv2
-import torch
-from ultralytics import YOLO
 
+# torch / ultralytics are imported inside Detector, so if they can't load
+# (e.g. DLLs blocked by Windows Smart App Control) only vision is disabled,
+# not the whole app.
 from config import (
     YOLO_MODEL_PATH as DEFAULT_MODEL_PATH,
     CAMERA_INDEX,
@@ -19,6 +20,7 @@ from config import (
 
 
 def select_device():
+    import torch
     if torch.cuda.is_available():
         return 0
     if torch.backends.mps.is_available():
@@ -32,6 +34,7 @@ class Detector:
     def __init__(self, model_path=DEFAULT_MODEL_PATH, conf=CONFIDENCE_LIMIT):
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"YOLO model not found: {model_path}")
+        from ultralytics import YOLO
         self.conf = conf
         self.device = select_device()
         self.model = YOLO(model_path)

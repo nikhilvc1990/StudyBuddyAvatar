@@ -90,7 +90,7 @@ Capture folders, output paths and the record rate are set in `config.py` under *
 | `check_setup.py` | Environment health check |
 | `audio_model/` | Vosk Indian-English model (`vosk-model-en-in-0.5`, downloaded by setup) |
 | `vision_model/weights/best.pt` | Trained YOLO26 detector (classes: Mobile, Reading, Sleeping) |
-| `DatasetTrainTestSplit.py`, `ActionDetector_Model_Train.py`, `data.yaml`, `yolo26n.pt` | Retraining the vision model (see PREREQUISITES.md) |
+| `DatasetTrainTestSplit.py`, `ActionDetector_Model_Train.py`, `data.yaml` | Retraining the vision model (see PREREQUISITES.md). The `yolo26n.pt` base model is downloaded automatically the first time you train. |
 | `capture_tool.py` | Offline Teachable Machine: webcam capture per class into `captured/<Class>/` |
 | `label_tool.py` | Offline Label Studio: draw/label bounding boxes, saves YOLO labels into `Dataset_Full/` |
 | `dataset_tools_common.py` | Helpers shared by the two dataset tools |

@@ -1,17 +1,34 @@
-# Python
+# ---- Python ----
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
+venv/
+env/
+.ipynb_checkpoints/
 
-# IDE (PyCharm settings are per-machine; each user picks the studybuddy interpreter)
+# ---- IDE / tools (per-machine settings) ----
 .idea/
+.vscode/
+.claude/
 
-# Training outputs / caches
-runs/
-dataset/images/
-dataset/labels/*.cache
-Dataset_Full/
-captured/
-
-# Setup leftovers
+# ---- Downloaded by setup.bat / ultralytics, so not stored in git ----
+# Vosk speech model (~1.5 GB): setup.ps1 downloads it
+audio_model/
 audio_model.bak/
+# Pretrained YOLO base used for training: ultralytics downloads it
+yolo26n.pt
+*.zip
+
+# ---- Your own data and generated training files ----
+# Webcam captures (photos of people) and the labelled dataset
+captured/
+Dataset_Full/
+# Train/val split made by DatasetTrainTestSplit.py, and training output
+dataset/
+runs/
+
+# ---- OS / misc ----
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log
