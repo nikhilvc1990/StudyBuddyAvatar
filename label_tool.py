@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from config import CAPTURE_DIR, DATASET_FULL_DIR, YOLO_MODEL_PATH
+from config import CAPTURE_DIR, DATASET_FULL_DIR, YOLO_MODEL_PATH, YOLO_ONNX_PATH
 from dataset_tools_common import (
     IMG_EXTS, all_class_names, class_color, cv_to_qimage, load_class_names, read_image,
 )
@@ -420,12 +420,12 @@ class LabelWindow(QMainWindow):
 
         rv.addSpacing(10)
         self.prelabel_btn = QPushButton("Pre-label with model (P)")
-        self.prelabel_btn.setToolTip(f"Runs {YOLO_MODEL_PATH} on this image and adds its boxes to correct.")
+        self.prelabel_btn.setToolTip(f"Runs the vision model ({os.path.basename(YOLO_ONNX_PATH)} or {os.path.basename(YOLO_MODEL_PATH)}) on this image and adds its boxes to correct.")
         self.prelabel_btn.clicked.connect(self.prelabel)
-        self.prelabel_btn.setEnabled(os.path.exists(YOLO_MODEL_PATH))
+        self.prelabel_btn.setEnabled(_have_model())
         rv.addWidget(self.prelabel_btn)
         self.auto_prelabel = QCheckBox("Auto pre-label unlabelled images")
-        self.auto_prelabel.setEnabled(os.path.exists(YOLO_MODEL_PATH))
+        self.auto_prelabel.setEnabled(_have_model())
         rv.addWidget(self.auto_prelabel)
 
         nav = QHBoxLayout()
@@ -671,21 +671,20 @@ class LabelWindow(QMainWindow):
 
     # ---------- model pre-labelling (like Label Studio's ML backend, but offline) ----------
     def prelabel(self):
-        if self.frame is None or not os.path.exists(YOLO_MODEL_PATH):
+        if self.frame is None or not _have_model():
             return
         QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
         try:
             if self.detector is None:
                 self.statusBar().showMessage("Loading YOLO model…")
                 QApplication.processEvents()
-                from detection import Detector
-                self.detector = Detector(YOLO_MODEL_PATH)
+                from detection import make_detector
+                self.detector = make_detector()
             det = self.detector
-            result = det.model.predict(source=self.frame, conf=det.conf, device=det.device, verbose=False)[0]
             lookup = {n.lower(): i for i, n in enumerate(self.class_names)}
             new = []
-            for (x1, y1, x2, y2), c in zip(result.boxes.xyxy.cpu().numpy(), result.boxes.cls.cpu().numpy()):
-                cls = lookup.get(str(det.labels[int(c)]).lower())
+            for x1, y1, x2, y2, c, _ in det.boxes(self.frame):
+                cls = lookup.get(str(det.labels[c]).lower())
                 if cls is None:
                     continue
                 box = [cls, float(x1), float(y1), float(x2), float(y2)]
@@ -709,6 +708,10 @@ class LabelWindow(QMainWindow):
     def closeEvent(self, e):
         self.save_current()
         super().closeEvent(e)
+
+
+def _have_model():
+    return os.path.exists(YOLO_ONNX_PATH) or os.path.exists(YOLO_MODEL_PATH)
 
 
 def _iou(a, b):

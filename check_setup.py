@@ -2,7 +2,7 @@
 import importlib
 import sys
 
-from config import VOSK_MODEL_PATH, YOLO_MODEL_PATH, CAMERA_INDEX, LLM_ENABLED, LLM_URL, LLM_MODEL
+from config import VOSK_MODEL_PATH, YOLO_MODEL_PATH, YOLO_ONNX_PATH, CAMERA_INDEX, LLM_ENABLED, LLM_URL, LLM_MODEL
 
 ok = True
 
@@ -34,8 +34,8 @@ def torch_info():
         import torch
     except OSError as e:
         if "4551" in str(e):
-            raise RuntimeError("Windows Smart App Control blocked PyTorch's DLLs - the camera "
-                               "detection is disabled (see PREREQUISITES.md, Troubleshooting)")
+            raise RuntimeError("blocked by Windows Smart App Control - fine for running the app "
+                               "(vision uses ONNX), needed only for training (see PREREQUISITES.md)")
         raise
     gpu = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU only"
     return f"{torch.__version__} ({gpu})"
@@ -46,6 +46,14 @@ def vosk_model():
     vosk.SetLogLevel(-1)
     vosk.Model(VOSK_MODEL_PATH)
     return VOSK_MODEL_PATH
+
+
+def onnx_model():
+    from detection import OnnxDetector
+    import numpy as np
+    d = OnnxDetector()
+    d.detect(np.zeros((480, 640, 3), np.uint8))
+    return f"{d.device}, classes {d.labels}"
 
 
 def yolo_model():
@@ -104,18 +112,22 @@ print(f"Python {sys.version.split()[0]} at {sys.executable}")
 print("Packages:")
 for mod in ("PyQt6.QtCore", "pyttsx3", "sounddevice", "vosk", "cv2", "numpy"):
     check(mod, version(mod) if mod != "PyQt6.QtCore" else lambda: __import__("PyQt6.QtCore").QtCore.PYQT_VERSION_STR)
-check("torch", torch_info)          # before ultralytics, which imports torch
-torch_ok = ok
-if torch_ok:
-    check("ultralytics", version("ultralytics"))
-else:
-    print("  [SKIP] ultralytics - needs torch")
+check("onnxruntime", version("onnxruntime"))
 print("Models:")
 check("Vosk speech model", vosk_model)
+check("YOLO vision model (ONNX, used by the app)", onnx_model)
+print("Training tools (warnings only):")
+torch_ok = True
+try:
+    print(f"  [OK]   torch - {torch_info()}")
+except Exception as e:
+    torch_ok = False
+    print(f"  [WARN] torch - {e}")
 if torch_ok:
-    check("YOLO vision model", yolo_model)
+    warn("ultralytics", version("ultralytics"))
+    warn("YOLO vision model (.pt)", yolo_model)
 else:
-    print("  [SKIP] YOLO vision model - needs torch")
+    print("  [SKIP] ultralytics / best.pt - need torch")
 print("Devices (warnings only):")
 warn("Text-to-speech", tts_voices)
 warn("Microphone", microphone)

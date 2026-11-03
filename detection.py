@@ -1,14 +1,18 @@
+import ast
 import os
 import time
 import threading
 
 import cv2
+import numpy as np
 
-# torch / ultralytics are imported inside Detector, so if they can't load
-# (e.g. DLLs blocked by Windows Smart App Control) only vision is disabled,
-# not the whole app.
+# torch / ultralytics / onnxruntime are imported inside the detectors, so if
+# they can't load (e.g. DLLs blocked by Windows Smart App Control) only vision
+# is disabled, not the whole app.
 from config import (
     YOLO_MODEL_PATH as DEFAULT_MODEL_PATH,
+    YOLO_ONNX_PATH,
+    VISION_BACKEND,
     CAMERA_INDEX,
     CONFIDENCE_LIMIT,
     PRED_INTERVAL,
@@ -55,6 +59,12 @@ class Detector:
                 detected[name] = float(conf)
         return detected
 
+    def boxes(self, frame):
+        """All boxes as (x1, y1, x2, y2, class_id, confidence) in frame pixels (used by label_tool)."""
+        r = self.model.predict(source=frame, conf=self.conf, device=self.device, verbose=False)[0].boxes
+        return [(*map(float, xyxy), int(c), float(p)) for xyxy, c, p in
+                zip(r.xyxy.cpu().numpy(), r.cls.cpu().numpy(), r.conf.cpu().numpy())]
+
     @staticmethod
     def pick_state(detected, priority=PRIORITY):
         """Return (state, confidence) for the highest-priority detected class."""
@@ -62,6 +72,74 @@ class Detector:
             if name in detected:
                 return name, detected[name]
         return None, 0.0
+
+
+class OnnxDetector(Detector):
+    """Same model exported to ONNX, run with ONNX Runtime (no PyTorch needed)."""
+
+    def __init__(self, model_path=YOLO_ONNX_PATH, conf=CONFIDENCE_LIMIT):
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"ONNX model not found: {model_path}")
+        import onnxruntime as ort
+        self.conf = conf
+        # DirectML uses any GPU (NVIDIA/AMD/Intel); falls back to CPU
+        providers = [p for p in ("DmlExecutionProvider", "CPUExecutionProvider")
+                     if p in ort.get_available_providers()]
+        self.session = ort.InferenceSession(model_path, providers=providers)
+        meta = self.session.get_modelmeta().custom_metadata_map
+        self.labels = ast.literal_eval(meta["names"])
+        inp = self.session.get_inputs()[0]
+        self.input_name = inp.name
+        self.in_h, self.in_w = inp.shape[2], inp.shape[3]   # 480 x 640 = webcam frames
+        self.device = self.session.get_providers()[0].replace("ExecutionProvider", "")
+        print(f"[Detector] ONNX Runtime ({self.device}) | Labels: {self.labels}")
+
+    def _letterbox(self, frame):
+        """Resize keeping aspect ratio and pad to the model's input size (as ultralytics does)."""
+        h, w = frame.shape[:2]
+        r = min(self.in_h / h, self.in_w / w)
+        nw, nh = round(w * r), round(h * r)
+        img = frame if (nw, nh) == (w, h) else cv2.resize(frame, (nw, nh), interpolation=cv2.INTER_LINEAR)
+        top, left = (self.in_h - nh) // 2, (self.in_w - nw) // 2
+        img = cv2.copyMakeBorder(img, top, self.in_h - nh - top, left, self.in_w - nw - left,
+                                 cv2.BORDER_CONSTANT, value=(114, 114, 114))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).transpose(2, 0, 1)
+        self._pad = (r, left, top)
+        return np.ascontiguousarray(img[None], dtype=np.float32) / 255.0
+
+    def detect(self, frame):
+        # output0: [1, 4 + classes, anchors]; only the best score per class is needed
+        out = self.session.run(None, {self.input_name: self._letterbox(frame)})[0][0]
+        best = out[4:].max(axis=1)
+        return {self.labels[i]: float(c) for i, c in enumerate(best) if c >= self.conf}
+
+    def boxes(self, frame, iou=0.7):
+        out = self.session.run(None, {self.input_name: self._letterbox(frame)})[0][0].T
+        cls, conf = out[:, 4:].argmax(axis=1), out[:, 4:].max(axis=1)
+        keep = conf >= self.conf
+        out, cls, conf = out[keep], cls[keep], conf[keep]
+        r, left, top = self._pad
+        result = []
+        for c in np.unique(cls):            # per-class NMS, like ultralytics
+            m = cls == c
+            cx, cy, w, h = out[m, :4].T
+            xywh = np.stack([(cx - w / 2 - left) / r, (cy - h / 2 - top) / r, w / r, h / r], axis=1)
+            for i in np.array(cv2.dnn.NMSBoxes(xywh.tolist(), conf[m].tolist(), self.conf, iou)).flatten():
+                x, y, bw, bh = xywh[i]
+                result.append((float(x), float(y), float(x + bw), float(y + bh), int(c), float(conf[m][i])))
+        return result
+
+
+def make_detector(backend=VISION_BACKEND):
+    """ONNX Runtime if possible (works under Smart App Control), else PyTorch."""
+    if backend in ("auto", "onnx"):
+        try:
+            return OnnxDetector()
+        except Exception as e:
+            if backend == "onnx":
+                raise
+            print(f"[Vision] ONNX not usable ({e}) - trying PyTorch")
+    return Detector()
 
 
 class StateFilter:
@@ -136,7 +214,7 @@ class VisionThread(threading.Thread):
 
     def run(self):
         try:
-            detector = Detector(self.model_path)
+            detector = make_detector()
         except Exception as e:
             print(f"[Vision] Disabled: {e}")
             return

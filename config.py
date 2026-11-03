@@ -16,6 +16,10 @@ VOSK_MODEL_PATH = os.path.join(BASE_DIR, "audio_model")
 
 # ---- Vision ----
 YOLO_MODEL_PATH = os.path.join(BASE_DIR, "vision_model", "weights", "best.pt")
+# Same model exported to ONNX: runs with ONNX Runtime (Microsoft-signed, no PyTorch
+# needed, so it works with Windows Smart App Control on). Re-export after retraining.
+YOLO_ONNX_PATH = os.path.join(BASE_DIR, "vision_model", "weights", "best.onnx")
+VISION_BACKEND = "auto"     # "auto" = ONNX if available, else PyTorch; or "onnx" / "torch"
 CAMERA_INDEX = 0            # 0 = default webcam; try 1, 2… for external cameras
 CONFIDENCE_LIMIT = 0.4
 PRED_INTERVAL = 0.5

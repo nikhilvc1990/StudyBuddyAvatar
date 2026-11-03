@@ -1,7 +1,7 @@
 # Study Buddy Avatar
 
 A desktop study companion for students. A small animated avatar sits on top of your screen. It:
-- **watches** through the webcam (YOLO26) and reacts when you're *Sleeping*, on your *Mobile*, or *Reading*
+- **watches** through the webcam (YOLO26, run with ONNX Runtime) and reacts when you're *Sleeping*, on your *Mobile*, or *Reading*
 - **listens** for the wake word **"david"** (offline Vosk speech recognition) and answers simple questions
 - **talks** back with offline Windows text-to-speech
 
@@ -43,9 +43,9 @@ If Ollama isn't installed or running, the model isn't downloaded, or the laptop 
 Run these in PyCharm (right-click the file → **Run**) or from the project folder, in order:
 
 1. `python capture_tool.py`: one card per class (Mobile, Reading, Sleeping). Hold **Hold to Record**, or hold key **1/2/3**, to save webcam frames into `captured/<Class>/`. **Upload…** adds existing photos. **+ Add a class** creates a new class.
-2. `python label_tool.py`: drag to draw a box. Keys **1/2/3** pick the class (the default is the folder the image came from). **A/D** go to the previous/next image, **Del** deletes a box, **Ctrl+Z** undoes. **Pre-label with model** uses the current `best.pt` to suggest boxes. Labels save automatically to `Dataset_Full/images`, `Dataset_Full/labels` and `Dataset_Full/classes.txt`.
+2. `python label_tool.py`: drag to draw a box. Keys **1/2/3** pick the class (the default is the folder the image came from). **A/D** go to the previous/next image, **Del** deletes a box, **Ctrl+Z** undoes. **Pre-label with model** uses the current model (`best.onnx`, or `best.pt`) to suggest boxes. Labels save automatically to `Dataset_Full/images`, `Dataset_Full/labels` and `Dataset_Full/classes.txt`.
 3. `python DatasetTrainTestSplit.py`: splits `Dataset_Full/` into `dataset/` and rewrites `data.yaml`.
-4. `python ActionDetector_Model_Train.py`: trains. Then copy `runs/detect/<run>/weights/best.pt` to `vision_model/weights/best.pt`.
+4. `python ActionDetector_Model_Train.py`: trains and exports `best.onnx`. Then copy `best.pt` and `best.onnx` from `runs/detect/<run>/weights/` to `vision_model/weights/`. Training needs PyTorch (see PREREQUISITES.md if Smart App Control blocks it).
 
 Capture folders, output paths and the record rate are set in `config.py` under *Dataset tools*.
 
@@ -67,7 +67,7 @@ Capture folders, output paths and the record rate are set in `config.py` under *
    - Each `labels/<name>.txt` has lines like `0 0.41 0.59 0.62 0.78`: the class id (0 = Mobile, 1 = Reading, 2 = Sleeping), then 4 numbers between 0 and 1.
    - Every label has an image with the same name in `images/`.
    - Labels of `Sleeping_...` images should start with `2`.
-5. **Pre-label**: open an image where you are clearly holding your phone and press **P**. An orange *Mobile* box should appear. This needs `vision_model/weights/best.pt`.
+5. **Pre-label**: open an image where you are clearly holding your phone and press **P**. An orange *Mobile* box should appear. This needs `vision_model/weights/best.onnx` (or `best.pt`).
 6. **Split**: run `DatasetTrainTestSplit.py`. It should print `train: N images` / `val: M images` with no `Skipping (no label)` lines for images you labelled. `data.yaml` should still list the same 3 names.
 7. **Quick training test**: set `epochs=1` in `ActionDetector_Model_Train.py` and run it. It should start training and list all 3 classes. Set it back to `100` afterwards.
 8. **Duplicate file names** (only matters if you used *Open folder…*): run this in PowerShell in the project folder, with your own folder in place of `C:\path\to\opened_folder`. It checks the source folders only, not `Dataset_Full\images`, which holds copies on purpose. If it prints nothing, no names clash. Any name it lists is shared by images that would also share one label file.
@@ -82,7 +82,7 @@ Capture folders, output paths and the record rate are set in `config.py` under *
 | `main.py` | Entry point: wires the UI, vision, voice and TTS together |
 | `config.py` | All settings (wake word, camera index, thresholds, messages) |
 | `avatar.py`, `bridge.py` | PyQt6 avatar window and thread-safe UI signals |
-| `detection.py` | Webcam + YOLO detection thread (`python detection.py` runs a standalone preview) |
+| `detection.py` | Webcam + YOLO detection thread (ONNX Runtime; PyTorch fallback set by `VISION_BACKEND`) (`python detection.py` runs a standalone preview) |
 | `voice.py`, `brain.py` | Wake word / command recognition; brain picks the LLM or built-in replies |
 | `chat_test.py`, `mic_test.py` | Test the AI by typing, and test the microphone / wake word, separately |
 | `llm.py` | Local LLM client (Ollama): streaming answers, memory, camera context, automatic fallback |
@@ -90,6 +90,7 @@ Capture folders, output paths and the record rate are set in `config.py` under *
 | `check_setup.py` | Environment health check |
 | `audio_model/` | Vosk Indian-English model (`vosk-model-en-in-0.5`, downloaded by setup) |
 | `vision_model/weights/best.pt` | Trained YOLO26 detector (classes: Mobile, Reading, Sleeping) |
+| `vision_model/weights/best.onnx` | The same model exported for ONNX Runtime: what the app runs. No PyTorch needed, so it works with Windows Smart App Control on, on any GPU (DirectML) or the CPU |
 | `DatasetTrainTestSplit.py`, `ActionDetector_Model_Train.py`, `data.yaml` | Retraining the vision model (see PREREQUISITES.md). The `yolo26n.pt` base model is downloaded automatically the first time you train. |
 | `capture_tool.py` | Offline Teachable Machine: webcam capture per class into `captured/<Class>/` |
 | `label_tool.py` | Offline Label Studio: draw/label bounding boxes, saves YOLO labels into `Dataset_Full/` |

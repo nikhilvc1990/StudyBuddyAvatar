@@ -1,5 +1,9 @@
 # StudyBuddyAvatar runtime dependencies (Python 3.12 - 3.14, Windows x64)
 #
+# The app runs the vision model with ONNX Runtime (onnxruntime-directml below),
+# which works even when Windows Smart App Control blocks PyTorch. torch is only
+# needed for training, exporting, and the .pt fallback.
+#
 # torch / torchvision are NOT listed here on purpose: setup.ps1 installs them
 # first from the PyTorch index (CUDA build if an NVIDIA GPU is found, CPU
 # otherwise). If installing by hand, do that first, e.g. CPU:
@@ -11,6 +15,7 @@ pywin32>=306            # COM initialisation for pyttsx3 on a worker thread
 sounddevice>=0.5        # microphone input (bundles PortAudio)
 vosk>=0.3.41            # offline speech recognition
 opencv-python>=4.10     # webcam capture
+onnxruntime-directml>=1.20  # runs best.onnx on any GPU (DirectML) or the CPU
 ultralytics>=8.4        # YOLO26 models (best.pt, yolo26n.pt) need 8.4+
 numpy>=2.0
 requests>=2.31         # talks to the local LLM (Ollama)

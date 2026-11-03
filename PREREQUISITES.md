@@ -87,7 +87,7 @@ Outside PyCharm, double-click **`run.bat`**.
 | Symptom | Fix |
 |---|---|
 | `running scripts is disabled on this system` | Use `setup.bat` (it bypasses the policy for that run only), not `setup.ps1` directly. |
-| `[WinError 4551] An Application Control policy has blocked this file ... c10.dll` (console shows `[Vision] Disabled`) | **Windows Smart App Control** is blocking PyTorch, which is needed for the camera detection. Voice and the AI still work. To fix it, open *Windows Security → App & browser control → Smart App Control settings* and choose **Off**. On some Windows versions it can't be turned back on without resetting Windows, so decide whether that's acceptable. |
+| `[WinError 4551] An Application Control policy has blocked this file ... c10.dll` | **Windows Smart App Control** is blocking PyTorch. The app doesn't need PyTorch: it runs the camera model with ONNX Runtime (`vision_model/weights/best.onnx`), which is allowed, so leave Smart App Control on. Check that the Run console shows `[Detector] ONNX Runtime (...)`. If it shows `[Vision] Disabled` instead, run `setup.bat` again (it installs `onnxruntime-directml`) and make sure `best.onnx` exists. PyTorch is only needed to **train** or **export** a model: see *Training a new vision model*. |
 | `WinError 126 ... c10.dll` / `fbgemm.dll` | Install the VC++ redistributable (step 1) and reboot. |
 | PyCharm doesn't list `studybuddy` | Choose *Python interpreter path* and browse to `%USERPROFILE%\miniconda3\envs\studybuddy\python.exe`. |
 | `CondaToSNonInteractiveError: Terms of Service have not been accepted` | conda is still using Anaconda's default channels. Run the three `conda config` commands from step 2, then in PyCharm pick *Use existing → studybuddy* instead of creating a new env. (Or accept the terms with the `conda tos accept ...` commands shown in the error; they're free for education and small organisations.) |
@@ -104,7 +104,9 @@ Outside PyCharm, double-click **`run.bat`**.
 
 ## Training a new vision model (optional)
 
-The repository ships the trained `vision_model/weights/best.pt`, so training is **not** needed to run the app. Training images are not included (`dataset/` holds only labels). To retrain:
+The repository ships the trained `vision_model/weights/best.pt` and its ONNX copy `best.onnx` (the one the app runs), so training is **not** needed to run the app. Training images are not included (`dataset/` holds only labels). To retrain:
 1. Put your images and labels in `Dataset_Full/images`, `Dataset_Full/labels`, and `Dataset_Full/classes.txt`.
 2. `python DatasetTrainTestSplit.py` creates `dataset/` and `data.yaml`.
-3. `python ActionDetector_Model_Train.py`, then copy `runs/detect/yolo26n_custom/weights/best.pt` to `vision_model/weights/`.
+3. `python ActionDetector_Model_Train.py`. It trains, then exports `best.onnx` next to `best.pt`. Copy **both** files from `runs/detect/yolo26n_custom/weights/` to `vision_model/weights/`. If you only have a `.pt`, export it with `yolo export model=best.pt format=onnx imgsz=480,640 simplify=True` (keep `imgsz=480,640`, the webcam frame size).
+
+Training and exporting need PyTorch. If Smart App Control blocks it (`WinError 4551`), either train on Google Colab and download `best.pt` and `best.onnx`, or try an older PyTorch in a separate env (`torch==2.8.0` from the CPU index loads on this setup), or turn Smart App Control off.

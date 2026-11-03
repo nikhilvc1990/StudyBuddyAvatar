@@ -32,4 +32,11 @@ results = model.train(
 )
 
 print("Training complete!")
-print(f"Best weights saved to: {model.trainer.save_dir}/weights/best.pt")
+best = os.path.join(model.trainer.save_dir, "weights", "best.pt")
+print(f"Best weights saved to: {best}")
+
+# The app runs the ONNX copy (works with Windows Smart App Control on).
+# imgsz=(480, 640) matches the webcam frames, so results equal the .pt model.
+onnx = YOLO(best).export(format="onnx", imgsz=(480, 640), simplify=True)
+print(f"ONNX model saved to: {onnx}")
+print("Copy best.pt and best.onnx into vision_model/weights/ to use them in the app.")
